@@ -141,7 +141,8 @@ flowchart TB
         LLM[LLM]
         TextChunk[TextChunking]
         TextAgg[TextAggregator]
-        TTS[TTS<br/>end]
+        TTS[TTS<br/>]
+        HeyGenAvatar[AvatarLipsync]
         StateUpdate[StateUpdate]
 
         TextInput --> DialogPrompt
@@ -149,6 +150,7 @@ flowchart TB
         LLM --> TextChunk
         LLM --> TextAgg
         TextChunk --> TTS
+        TTS ---> HeyGenAvatar
         TextAgg --> StateUpdate
         StateUpdate -.->|loop optional| InteractionQueue
     end
