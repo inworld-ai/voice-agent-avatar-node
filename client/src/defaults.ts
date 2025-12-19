@@ -21,4 +21,9 @@ export const configuration = {
   },
   voiceId: DEFAULT_VOICE_ID,
   sttService: "assemblyai" as const,
+  apiKeys: {
+    inworldApiKey: "",
+    assemblyAiApiKey: "",
+    heygenApiKey: "",
+  },
 };

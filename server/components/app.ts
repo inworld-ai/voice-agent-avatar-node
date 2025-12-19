@@ -70,13 +70,15 @@ export class InworldApp {
     }
 
     const voiceId = connection.state.voiceId || this.voiceId;
+    // Use session-specific API key or fall back to server default
+    const apiKey = connection.apiKeys?.inworldApiKey || this.apiKey;
 
     // Check if we already have a graph for this voiceId
     let graph = this.sessionTextGraphs.get(voiceId);
 
     if (!graph) {
       graph = await InworldGraphWrapper.create({
-        apiKey: this.apiKey,
+        apiKey, // Use session-specific API key
         llmModelName: this.llmModelName,
         llmProvider: this.llmProvider,
         voiceId,
@@ -103,9 +105,21 @@ export class InworldApp {
     _sttService?: string,
     sessionId?: string,
   ): Promise<InworldGraphWrapper> {
-    if (!this.env.assemblyAIApiKey) {
+    // Get session-specific API keys
+    let apiKey = this.apiKey;
+    let assemblyAIApiKey = this.env?.assemblyAIApiKey || "";
+
+    if (sessionId && this.connections[sessionId]) {
+      apiKey = this.connections[sessionId].apiKeys?.inworldApiKey || this.apiKey;
+      assemblyAIApiKey =
+        this.connections[sessionId].apiKeys?.assemblyAiApiKey ||
+        this.env?.assemblyAIApiKey ||
+        "";
+    }
+
+    if (!assemblyAIApiKey) {
       throw new Error(
-        `Assembly.AI STT requested but ASSEMBLY_AI_API_KEY is not configured.`,
+        `Assembly.AI STT requested but ASSEMBLY_AI_API_KEY is not configured on server or provided by client.`,
       );
     }
 
@@ -121,7 +135,7 @@ export class InworldApp {
     if (!graph) {
       console.log(`Creating Assembly.AI STT graph for voiceId: ${voiceId}`);
       graph = await InworldGraphWrapper.create({
-        apiKey: this.apiKey,
+        apiKey, // Use session-specific API key
         llmModelName: this.llmModelName,
         llmProvider: this.llmProvider,
         voiceId, // Use session-specific voiceId
@@ -132,7 +146,7 @@ export class InworldApp {
         ttsModelId: this.ttsModelId,
         vadClient: this.vadClient,
         useAssemblyAI: true,
-        assemblyAIApiKey: this.env.assemblyAIApiKey,
+        assemblyAIApiKey, // Use session-specific API key
       });
       this.sessionAudioGraphs.set(voiceId, graph);
       console.log(`Assembly.AI STT graph created for voiceId: ${voiceId}`);
@@ -161,6 +175,21 @@ export class InworldApp {
     const systemMessageId = v4();
     const sttService = req.body.sttService || "assemblyai"; // Default to Assembly.AI
 
+    // Get API keys from request body (client input) or use server env vars
+    const clientApiKeys = req.body.apiKeys || {};
+    const effectiveInworldApiKey = clientApiKeys.inworldApiKey || this.env.apiKey;
+    const effectiveAssemblyAiApiKey =
+      clientApiKeys.assemblyAiApiKey || this.env.assemblyAIApiKey;
+    const effectiveHeygenApiKey =
+      clientApiKeys.heygenApiKey || this.env.heygenApiKey;
+
+    // Validate required API keys
+    if (!effectiveInworldApiKey) {
+      return res.status(400).json({
+        error: `INWORLD_API_KEY is required. Please provide it in the client or set it in the server environment.`,
+      });
+    }
+
     // Validate STT service availability BEFORE creating session
     if (sttService !== "assemblyai") {
       return res.status(400).json({
@@ -170,9 +199,9 @@ export class InworldApp {
       });
     }
 
-    if (!this.env.assemblyAIApiKey) {
+    if (!effectiveAssemblyAiApiKey) {
       return res.status(400).json({
-        error: `Assembly.AI STT requested but ASSEMBLY_AI_API_KEY is not configured`,
+        error: `Assembly.AI STT requested but ASSEMBLY_AI_API_KEY is not configured on server or provided by client`,
         availableServices: ["assemblyai"],
         requestedService: sttService,
       });
@@ -186,6 +215,15 @@ export class InworldApp {
     );
     console.log(
       `[Session ${sessionId}] Agent config: voiceId="${agentConfig.voiceId}", avatarId="${agentConfig.heygenAvatarId || "none"}"`,
+    );
+    console.log(
+      `[Session ${sessionId}] Using ${clientApiKeys.inworldApiKey ? "client" : "server"} Inworld API key`,
+    );
+    console.log(
+      `[Session ${sessionId}] Using ${clientApiKeys.assemblyAiApiKey ? "client" : "server"} Assembly.AI API key`,
+    );
+    console.log(
+      `[Session ${sessionId}] Using ${clientApiKeys.heygenApiKey ? "client" : "server"} HeyGen API key`,
     );
 
     this.connections[sessionId] = {
@@ -205,6 +243,12 @@ export class InworldApp {
       ws: null,
       sttService, // Store STT service choice for this session
       agentConfig, // Store agent config for later use
+      apiKeys: {
+        // Store effective API keys for this session
+        inworldApiKey: effectiveInworldApiKey,
+        assemblyAiApiKey: effectiveAssemblyAiApiKey,
+        heygenApiKey: effectiveHeygenApiKey,
+      },
     };
 
     // Return agent info and config to client

@@ -68,6 +68,11 @@ export interface Connection {
     voiceId: string;
     heygenAvatarId?: string;
   }; // Agent-specific configuration
+  apiKeys?: {
+    inworldApiKey?: string;
+    assemblyAiApiKey?: string;
+    heygenApiKey?: string;
+  }; // Session-specific API keys (from client or server env)
 }
 
 export type ConnectionsMap = {

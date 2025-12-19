@@ -186,22 +186,34 @@ export function getAgentConfig(systemPrompt: string): {
 }
 
 export const parseEnvironmentVariables = () => {
-  if (!process.env.INWORLD_API_KEY) {
-    throw new Error("INWORLD_API_KEY env variable is required");
+  // All API keys are now optional (can be provided by client)
+  const inworldApiKey = process.env.INWORLD_API_KEY?.trim();
+  const assemblyAIApiKey = process.env.ASSEMBLY_AI_API_KEY?.trim();
+  const heygenApiKey = process.env.HEYGEN_API_KEY?.trim();
+
+  // Log configuration status for all API keys
+  if (inworldApiKey) {
+    console.log(`Inworld API key configured on server`);
+  } else {
+    console.log(`Inworld API key not set on server (can be provided by client)`);
   }
 
-  // Validate required API keys for Assembly.AI (default STT service)
-  const assemblyAIApiKey = process.env.ASSEMBLY_AI_API_KEY?.trim();
-  if (!assemblyAIApiKey) {
-    throw new Error(
-      "ASSEMBLY_AI_API_KEY env variable is required and cannot be empty",
-    );
+  if (assemblyAIApiKey) {
+    console.log(`Assembly.AI API key configured on server`);
+  } else {
+    console.log(`Assembly.AI API key not set on server (can be provided by client)`);
+  }
+
+  if (heygenApiKey) {
+    console.log(`HeyGen API key configured on server`);
+  } else {
+    console.log(`HeyGen API key not set on server (can be provided by client)`);
   }
 
   console.log(`Available STT service: Assembly.AI`);
 
   return {
-    apiKey: process.env.INWORLD_API_KEY,
+    apiKey: inworldApiKey || "",
     llmModelName: process.env.LLM_MODEL_NAME || DEFAULT_LLM_MODEL_NAME,
     llmProvider: process.env.LLM_PROVIDER || DEFAULT_PROVIDER,
     voiceId: process.env.VOICE_ID || DEFAULT_VOICE_ID,
@@ -209,7 +221,6 @@ export const parseEnvironmentVariables = () => {
       process.env.VAD_MODEL_PATH ||
       path.join(__dirname, DEFAULT_VAD_MODEL_PATH),
     ttsModelId: process.env.TTS_MODEL_ID || DEFAULT_TTS_MODEL_ID,
-    // Because the env variable is optional and it's a string, we need to convert it to a boolean safely
     graphVisualizationEnabled:
       (process.env.GRAPH_VISUALIZATION_ENABLED || "").toLowerCase().trim() ===
       "true",
@@ -217,7 +228,7 @@ export const parseEnvironmentVariables = () => {
       (process.env.DISABLE_AUTO_INTERRUPTION || "").toLowerCase().trim() ===
       "true",
     useAssemblyAI: true,
-    assemblyAIApiKey,
-    heygenApiKey: process.env.HEYGEN_API_KEY?.trim() || undefined,
+    assemblyAIApiKey: assemblyAIApiKey || "",
+    heygenApiKey: heygenApiKey || "",
   };
 };

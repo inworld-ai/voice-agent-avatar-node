@@ -505,6 +505,10 @@ function App() {
     try {
       // Get avatar ID from agent config
       const avatarId = agentConfigRef.current?.heygenAvatarId;
+      
+      // Get HeyGen API key from form (if provided by client)
+      const { apiKeys } = formMethods.getValues();
+      const heygenApiKey = apiKeys?.heygenApiKey;
 
       // Request session token from server
       const response = await fetch(
@@ -514,7 +518,10 @@ function App() {
           headers: {
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({ avatarId }),
+          body: JSON.stringify({ 
+            avatarId,
+            heygenApiKey, // Pass client-provided API key
+          }),
         },
       );
 
@@ -563,7 +570,7 @@ function App() {
       console.error("Error starting HeyGen session:", error);
       throw error;
     }
-  }, []);
+  }, [formMethods]);
 
   const openConnection = useCallback(async () => {
     key = v4();
@@ -572,15 +579,21 @@ function App() {
     setChatting(true);
     setUserName(user?.name!);
 
-    // Check if Heygen is configured on server
+    // Check if Heygen is configured on server or provided by client
     let shouldStartHeygen = false;
     try {
       const configResponse = await fetch(config.CONFIG_URL);
       const configData = await configResponse.json();
-      shouldStartHeygen = configData.heygenApiKeyConfigured || false;
+      const serverHeygenConfigured = configData.heygenApiKeyConfigured || false;
+      const clientHeygenProvided = !!(apiKeys?.heygenApiKey);
+      
+      shouldStartHeygen = serverHeygenConfigured || clientHeygenProvided;
       setHeygenConfigured(shouldStartHeygen);
-      if (shouldStartHeygen) {
+      
+      if (serverHeygenConfigured) {
         setHeygenApiKey("server-configured");
+      } else if (clientHeygenProvided) {
+        setHeygenApiKey(apiKeys.heygenApiKey);
       }
     } catch (error) {
       console.error("Failed to fetch server configuration:", error);
@@ -595,6 +608,11 @@ function App() {
         userName: user?.name,
         agent,
         sttService: "assemblyai", // Always use Assembly.AI (only supported STT service)
+        apiKeys: {
+          inworldApiKey: apiKeys?.inworldApiKey,
+          assemblyAiApiKey: apiKeys?.assemblyAiApiKey,
+          heygenApiKey: apiKeys?.heygenApiKey,
+        },
       }),
     });
     const data = await response.json();

@@ -14,6 +14,7 @@ import { useFormContext } from "react-hook-form";
 import { config } from "../../config";
 import { save as saveConfiguration } from "../helpers/configuration";
 import { ConfigurationSession } from "../types";
+import { ApiKeysConfig } from "./ApiKeysConfig";
 
 interface ConfigViewProps {
   canStart: boolean;
@@ -75,8 +76,16 @@ export const ConfigView = (props: ConfigViewProps) => {
 
   const systemPrompt = watch("agent.systemPrompt") || "";
 
+  // Server-side API key configuration status
+  const [inworldConfigured, setInworldConfigured] = useState(false);
+  const [assemblyAiConfigured, setAssemblyAiConfigured] = useState(false);
   const [heygenConfigured, setHeygenConfigured] = useState(false);
   const [configLoading, setConfigLoading] = useState(true);
+
+  // Client-side API key inputs (only shown if not configured on server)
+  const [inworldApiKey, setInworldApiKey] = useState("");
+  const [assemblyAiApiKey, setAssemblyAiApiKey] = useState("");
+  const [heygenApiKey, setHeygenApiKey] = useState("");
 
   // Fetch server configuration on mount
   useEffect(() => {
@@ -84,9 +93,13 @@ export const ConfigView = (props: ConfigViewProps) => {
       try {
         const response = await fetch(config.CONFIG_URL);
         const data = await response.json();
+        setInworldConfigured(data.inworldApiKeyConfigured || false);
+        setAssemblyAiConfigured(data.assemblyAiApiKeyConfigured || false);
         setHeygenConfigured(data.heygenApiKeyConfigured || false);
       } catch (error) {
         console.error("Failed to fetch server configuration:", error);
+        setInworldConfigured(false);
+        setAssemblyAiConfigured(false);
         setHeygenConfigured(false);
       } finally {
         setConfigLoading(false);
@@ -112,6 +125,43 @@ export const ConfigView = (props: ConfigViewProps) => {
     },
     [setValue, getValues],
   );
+
+  const handleStart = useCallback(async () => {
+    setValue("user.name", "User"); // Set default name
+    
+    // Save API keys to form if they were entered
+    if (!inworldConfigured && inworldApiKey) {
+      setValue("apiKeys.inworldApiKey", inworldApiKey);
+    }
+    if (!assemblyAiConfigured && assemblyAiApiKey) {
+      setValue("apiKeys.assemblyAiApiKey", assemblyAiApiKey);
+    }
+    if (!heygenConfigured && heygenApiKey) {
+      setValue("apiKeys.heygenApiKey", heygenApiKey);
+    }
+    
+    // Wait a tick to ensure setValue has propagated
+    await new Promise(resolve => setTimeout(resolve, 0));
+    
+    saveConfiguration(getValues());
+    await props.onStart();
+  }, [
+    setValue,
+    getValues,
+    inworldConfigured,
+    assemblyAiConfigured,
+    heygenConfigured,
+    inworldApiKey,
+    assemblyAiApiKey,
+    heygenApiKey,
+    props,
+  ]);
+
+  // Check if required API keys are provided
+  const canCreateAgent =
+    systemPrompt &&
+    (inworldConfigured || inworldApiKey.trim()) &&
+    (assemblyAiConfigured || assemblyAiApiKey.trim());
 
   return (
     <>
@@ -267,74 +317,90 @@ export const ConfigView = (props: ConfigViewProps) => {
           </Paper>
         </Box>
 
-        {/* Show info message when Heygen is configured on server */}
-        {systemPrompt && !configLoading && heygenConfigured && (
-          <Box sx={{ mt: 3 }}>
-            <Paper
-              elevation={0}
-              sx={{
-                backgroundColor: "#F0F9F4",
-                border: "1px solid #C6E7D5",
-                borderRadius: "12px",
-                overflow: "hidden",
-              }}
-            >
-              <Box
+        {/* API Keys Configuration */}
+        {!configLoading && (
+          <ApiKeysConfig
+            inworldApiKey={inworldApiKey}
+            assemblyAiApiKey={assemblyAiApiKey}
+            heygenApiKey={heygenApiKey}
+            showInworldKey={!inworldConfigured}
+            showAssemblyAiKey={!assemblyAiConfigured}
+            showHeygenKey={!heygenConfigured}
+            onInworldApiKeyChange={setInworldApiKey}
+            onAssemblyAiApiKeyChange={setAssemblyAiApiKey}
+            onHeygenApiKeyChange={setHeygenApiKey}
+          />
+        )}
+
+        {/* Show info message when all keys are configured on server */}
+        {!configLoading &&
+          inworldConfigured &&
+          assemblyAiConfigured &&
+          heygenConfigured && (
+            <Box sx={{ mb: 3 }}>
+              <Paper
+                elevation={0}
                 sx={{
-                  p: "16px 20px",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 1.5,
+                  backgroundColor: "#F0F9F4",
+                  border: "1px solid #C6E7D5",
+                  borderRadius: "12px",
+                  overflow: "hidden",
                 }}
               >
                 <Box
                   sx={{
-                    width: "20px",
-                    height: "20px",
-                    borderRadius: "50%",
-                    backgroundColor: "#22C55E",
+                    p: "16px 20px",
                     display: "flex",
                     alignItems: "center",
-                    justifyContent: "center",
-                    flexShrink: 0,
+                    gap: 1.5,
                   }}
                 >
-                  <Typography
+                  <Box
                     sx={{
-                      color: "white",
-                      fontSize: "14px",
-                      fontWeight: 700,
-                      lineHeight: 1,
+                      width: "20px",
+                      height: "20px",
+                      borderRadius: "50%",
+                      backgroundColor: "#22C55E",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      flexShrink: 0,
                     }}
                   >
-                    ✓
+                    <Typography
+                      sx={{
+                        color: "white",
+                        fontSize: "14px",
+                        fontWeight: 700,
+                        lineHeight: 1,
+                      }}
+                    >
+                      &#10003;
+                    </Typography>
+                  </Box>
+                  <Typography
+                    variant="body2"
+                    sx={{
+                      color: "#166534",
+                      fontSize: "14px",
+                      fontFamily: "Inter, Arial, sans-serif",
+                      fontWeight: 500,
+                    }}
+                  >
+                    All API keys configured on server
                   </Typography>
                 </Box>
-                <Typography
-                  variant="body2"
-                  sx={{
-                    color: "#166534",
-                    fontSize: "14px",
-                    fontFamily: "Inter, Arial, sans-serif",
-                    fontWeight: 500,
-                  }}
-                >
-                  Heygen API Key configured on server - Video avatar enabled
-                </Typography>
-              </Box>
-            </Paper>
-          </Box>
-        )}
+              </Paper>
+            </Box>
+          )}
 
-        {/* Create Button - Only when prompt exists (API keys are optional) */}
+        {/* Create Button */}
         {systemPrompt && (
           <Box sx={{ display: "flex", justifyContent: "center", mt: 2 }}>
             <Button
               variant="contained"
-              onClick={() => {
-                setValue("user.name", "User"); // Set default name
-                props.onStart();
-              }}
+              onClick={handleStart}
+              disabled={!canCreateAgent}
               sx={{
                 borderRadius: "8px",
                 px: 4,
@@ -343,14 +409,22 @@ export const ConfigView = (props: ConfigViewProps) => {
                 fontSize: "14px",
                 fontWeight: 600,
                 fontFamily: "Inter, Arial, sans-serif",
-                backgroundColor: "#111111",
+                backgroundColor: canCreateAgent ? "#111111" : "#D6D1CB",
                 color: "white",
                 minWidth: "140px",
                 height: "40px",
-                boxShadow: "0 1px 4px rgba(0, 0, 0, 0.1)",
+                boxShadow: canCreateAgent
+                  ? "0 1px 4px rgba(0, 0, 0, 0.1)"
+                  : "none",
                 "&:hover": {
-                  backgroundColor: "#222222",
-                  boxShadow: "0 2px 8px rgba(0, 0, 0, 0.15)",
+                  backgroundColor: canCreateAgent ? "#222222" : "#D6D1CB",
+                  boxShadow: canCreateAgent
+                    ? "0 2px 8px rgba(0, 0, 0, 0.15)"
+                    : "none",
+                },
+                "&.Mui-disabled": {
+                  backgroundColor: "#D6D1CB",
+                  color: "white",
                 },
                 transition: "all 0.2s ease-in-out",
               }}

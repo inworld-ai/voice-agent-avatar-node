@@ -1,6 +1,8 @@
 export type STTService = "assemblyai";
 
 export type ApiKeys = {
+  inworldApiKey?: string;
+  assemblyAiApiKey?: string;
   heygenApiKey?: string;
 };
 

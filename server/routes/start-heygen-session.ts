@@ -2,12 +2,14 @@ import { Request, Response } from "express";
 
 export async function startHeygenSession(req: Request, res: Response) {
   try {
-    const { avatarId } = req.body; // Get avatarId from request
-    const heygenApiKey = process.env.HEYGEN_API_KEY;
+    const { avatarId, heygenApiKey: clientHeygenApiKey } = req.body;
+    
+    // Use client-provided API key or fall back to server env var
+    const heygenApiKey = clientHeygenApiKey || process.env.HEYGEN_API_KEY;
 
     if (!heygenApiKey) {
       return res.status(400).json({
-        error: "HeyGen API Key not configured on server",
+        error: "HeyGen API Key not configured on server or provided by client",
       });
     }
 

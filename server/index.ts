@@ -33,7 +33,9 @@ app.get("/health", (req, res) => {
 
 app.get("/config", (req, res) => {
   res.status(200).json({
-    heygenApiKeyConfigured: !!inworldApp.heygenApiKey,
+    inworldApiKeyConfigured: !!process.env.INWORLD_API_KEY,
+    assemblyAiApiKeyConfigured: !!process.env.ASSEMBLY_AI_API_KEY,
+    heygenApiKeyConfigured: !!process.env.HEYGEN_API_KEY,
   });
 });
 
