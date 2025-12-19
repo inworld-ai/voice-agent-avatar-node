@@ -58,6 +58,9 @@ export function Chat(props: ChatProps) {
   const [isRecording, setIsRecording] = useState(false);
   const [showTextWidget, setShowTextWidget] = useState(false);
 
+  // Track if we've started chatting for layout transitions
+  const hasStartedChat = chatHistory.length > 0;
+
   // Track attached video element to avoid duplicate attachments
   const attachedVideoRef = useRef<HTMLVideoElement | null>(null);
 
@@ -95,6 +98,149 @@ export function Chat(props: ChatProps) {
     },
     [],
   );
+
+  // Shared HeyGen Video Component
+  const renderHeygenVideo = () => {
+    if (!heygenApiKey) return null;
+
+    return (
+      <Box
+        sx={{
+          width: "100%",
+          maxWidth: "800px",
+          aspectRatio: "16/9",
+          position: "relative",
+          backgroundColor: "#E1E9DD",
+          borderRadius: "12px",
+          overflow: "hidden",
+          border: "1px solid #D6D1CB",
+          boxShadow: "0 2px 8px rgba(0, 0, 0, 0.08)",
+          transition: "all 2.4s cubic-bezier(0.4, 0, 0.2, 1)",
+        }}
+      >
+        <video
+          ref={handleVideoRef}
+          autoPlay
+          playsInline
+          style={{
+            width: "100%",
+            height: "100%",
+            objectFit: "cover",
+            display: isHeygenStreamReady ? "block" : "none",
+          }}
+        />
+        {!isHeygenStreamReady && (
+          <Box
+            sx={{
+              position: "absolute",
+              inset: 0,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              background:
+                "linear-gradient(135deg, #E1E9DD 0%, #D4DDD0 100%)",
+            }}
+          >
+            <Box sx={{ textAlign: "center" }}>
+              <Box
+                sx={{
+                  width: "120px",
+                  height: "120px",
+                  backgroundColor: "#0C6B4D",
+                  borderRadius: "12px",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  margin: "0 auto 16px",
+                  boxShadow: "0 4px 12px rgba(12, 107, 77, 0.3)",
+                }}
+              >
+                <Typography
+                  sx={{
+                    fontSize: "56px",
+                    fontWeight: 700,
+                    color: "white",
+                    fontFamily: "Inter, Arial, sans-serif",
+                  }}
+                >
+                  H
+                </Typography>
+              </Box>
+              <Typography
+                variant="body1"
+                sx={{
+                  color: "#3F3B37",
+                  fontFamily: "Inter, Arial, sans-serif",
+                  fontWeight: 600,
+                  fontSize: "16px",
+                  mb: 1,
+                }}
+              >
+                HeyGen Live Avatar
+              </Typography>
+              <Typography
+                variant="body2"
+                sx={{
+                  color: "#817973",
+                  fontFamily: "Inter, Arial, sans-serif",
+                  fontSize: "14px",
+                }}
+              >
+                {isHeygenStreamReady
+                  ? "Connected"
+                  : isHeygenConnected
+                    ? "Loading stream..."
+                    : "Connecting..."}
+              </Typography>
+            </Box>
+          </Box>
+        )}
+        {isHeygenStreamReady && (
+          <Box
+            sx={{
+              position: "absolute",
+              top: 16,
+              right: 16,
+              display: "flex",
+              alignItems: "center",
+              gap: 1,
+              backgroundColor: "rgba(255, 255, 255, 0.95)",
+              backdropFilter: "blur(8px)",
+              px: 2,
+              py: 1,
+              borderRadius: "8px",
+              boxShadow: "0 2px 8px rgba(0, 0, 0, 0.1)",
+            }}
+          >
+            <Box
+              sx={{
+                width: "8px",
+                height: "8px",
+                backgroundColor: "#22C55E",
+                borderRadius: "50%",
+                animation: "pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite",
+                "@keyframes pulse": {
+                  "0%, 100%": { opacity: 1 },
+                  "50%": { opacity: 0.5 },
+                },
+              }}
+            />
+            <Typography
+              variant="caption"
+              sx={{
+                color: "#3F3B37",
+                fontFamily: "Inter, Arial, sans-serif",
+                fontSize: "12px",
+                fontWeight: 500,
+              }}
+            >
+              Ready
+            </Typography>
+          </Box>
+        )}
+      </Box>
+    );
+  };
 
   const stopRecording = useCallback(() => {
     setIsRecording(false);
@@ -331,164 +477,40 @@ export function Chat(props: ChatProps) {
         </Box>
 
         {/* Content Area - Different layouts based on state */}
-        {/* Case 1: No chat + Heygen enabled = Video + Mic widget below */}
-        {/* Case 2: No chat + No Heygen = Mic widget centered */}
-        {/* Case 3: Has chat + Heygen = Video + Chat history */}
-        {/* Case 4: Has chat + No Heygen = Chat history only */}
+        {/* Unified layout: HeyGen video position transitions smoothly */}
 
+        {/* HeyGen Video - Always rendered if API key exists, position changes based on chat state */}
+        {heygenApiKey && (
+          <Box
+            sx={{
+              px: 3,
+              pb: hasStartedChat ? 2 : 0,
+              pt: hasStartedChat ? 0 : 0,
+              display: "flex",
+              justifyContent: "center",
+              alignItems: hasStartedChat ? "flex-start" : "center",
+              flex: hasStartedChat ? 0 : 1,
+              transition: "all 2.4s cubic-bezier(0.4, 0, 0.2, 1)",
+            }}
+          >
+            {renderHeygenVideo()}
+          </Box>
+        )}
+
+        {/* Content below video */}
         {chatHistory.length === 0 && heygenApiKey ? (
-          // Case 1: Initial view with Heygen - Video + Mic widget
+          // Case 1: Initial view with Heygen - Mic widget below video
           <Fade in timeout={500}>
             <Box
               sx={{
-                flex: 1,
                 display: "flex",
                 flexDirection: "column",
                 alignItems: "center",
-                justifyContent: "center",
                 gap: 3,
                 px: 3,
+                pb: 3,
               }}
             >
-              {/* Heygen Video */}
-              <Box
-                sx={{
-                  width: "100%",
-                  maxWidth: "800px",
-                  aspectRatio: "16/9",
-                  position: "relative",
-                  backgroundColor: "#E1E9DD",
-                  borderRadius: "12px",
-                  overflow: "hidden",
-                  border: "1px solid #D6D1CB",
-                  boxShadow: "0 2px 8px rgba(0, 0, 0, 0.08)",
-                }}
-              >
-                <video
-                  ref={handleVideoRef}
-                  autoPlay
-                  playsInline
-                  style={{
-                    width: "100%",
-                    height: "100%",
-                    objectFit: "cover",
-                    display: isHeygenStreamReady ? "block" : "none",
-                  }}
-                />
-                {!isHeygenStreamReady && (
-                  <Box
-                    sx={{
-                      position: "absolute",
-                      inset: 0,
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      background:
-                        "linear-gradient(135deg, #E1E9DD 0%, #D4DDD0 100%)",
-                    }}
-                  >
-                    <Box sx={{ textAlign: "center" }}>
-                      <Box
-                        sx={{
-                          width: "120px",
-                          height: "120px",
-                          backgroundColor: "#0C6B4D",
-                          borderRadius: "12px",
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          margin: "0 auto 16px",
-                          boxShadow: "0 4px 12px rgba(12, 107, 77, 0.3)",
-                        }}
-                      >
-                        <Typography
-                          sx={{
-                            fontSize: "56px",
-                            fontWeight: 700,
-                            color: "white",
-                            fontFamily: "Inter, Arial, sans-serif",
-                          }}
-                        >
-                          H
-                        </Typography>
-                      </Box>
-                      <Typography
-                        variant="body1"
-                        sx={{
-                          color: "#3F3B37",
-                          fontFamily: "Inter, Arial, sans-serif",
-                          fontWeight: 600,
-                          fontSize: "16px",
-                          mb: 1,
-                        }}
-                      >
-                        HeyGen Live Avatar
-                      </Typography>
-                      <Typography
-                        variant="body2"
-                        sx={{
-                          color: "#817973",
-                          fontFamily: "Inter, Arial, sans-serif",
-                          fontSize: "14px",
-                        }}
-                      >
-                        {isHeygenStreamReady
-                          ? "Connected"
-                          : isHeygenConnected
-                            ? "Loading stream..."
-                            : "Connecting..."}
-                      </Typography>
-                    </Box>
-                  </Box>
-                )}
-
-                {/* Connection indicator - only show when HeyGen stream is ready */}
-                {isHeygenStreamReady && (
-                  <Box
-                    sx={{
-                      position: "absolute",
-                      top: 16,
-                      right: 16,
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 1,
-                      backgroundColor: "rgba(255, 255, 255, 0.95)",
-                      backdropFilter: "blur(8px)",
-                      px: 2,
-                      py: 1,
-                      borderRadius: "8px",
-                      boxShadow: "0 2px 8px rgba(0, 0, 0, 0.1)",
-                    }}
-                  >
-                    <Box
-                      sx={{
-                        width: "8px",
-                        height: "8px",
-                        backgroundColor: "#22C55E",
-                        borderRadius: "50%",
-                        animation:
-                          "pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite",
-                        "@keyframes pulse": {
-                          "0%, 100%": { opacity: 1 },
-                          "50%": { opacity: 0.5 },
-                        },
-                      }}
-                    />
-                    <Typography
-                      variant="caption"
-                      sx={{
-                        color: "#3F3B37",
-                        fontFamily: "Inter, Arial, sans-serif",
-                        fontSize: "12px",
-                        fontWeight: 500,
-                      }}
-                    >
-                      Ready
-                    </Typography>
-                  </Box>
-                )}
-              </Box>
-
               {/* Mic widget directly below video */}
               <Box
                 sx={{
@@ -718,174 +740,23 @@ export function Chat(props: ChatProps) {
             </Box>
           </Fade>
         ) : chatHistory.length > 0 ? (
-          // Case 3 & 4: Chat view (with or without Heygen)
+          // Case 3 & 4: Chat view - history below video
           <>
-            {/* Heygen Video Placeholder - shown if API key exists */}
-            {heygenApiKey && (
+            {/* Chat History */}
+            <Fade in={true} timeout={800}>
               <Box
                 sx={{
-                  px: 3,
-                  pb: 2,
+                  flex: 1,
+                  overflow: "hidden",
                   display: "flex",
-                  justifyContent: "center",
+                  flexDirection: "column",
+                  paddingBottom: "140px",
+                  transition: "padding-bottom 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
                 }}
               >
-                <Box
-                  sx={{
-                    width: "100%",
-                    maxWidth: "800px",
-                    aspectRatio: "16/9",
-                    position: "relative",
-                    backgroundColor: "#E1E9DD",
-                    borderRadius: "12px",
-                    overflow: "hidden",
-                    border: "1px solid #D6D1CB",
-                    boxShadow: "0 2px 8px rgba(0, 0, 0, 0.08)",
-                  }}
-                >
-                  {/* Video element */}
-                  <video
-                    ref={handleVideoRef}
-                    autoPlay
-                    playsInline
-                    style={{
-                      width: "100%",
-                      height: "100%",
-                      objectFit: "cover",
-                      display: isHeygenStreamReady ? "block" : "none",
-                    }}
-                  />
-
-                  {/* Placeholder - only show when stream is not ready */}
-                  {!isHeygenStreamReady && (
-                    <Box
-                      sx={{
-                        position: "absolute",
-                        inset: 0,
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        background:
-                          "linear-gradient(135deg, #E1E9DD 0%, #D4DDD0 100%)",
-                      }}
-                    >
-                      <Box sx={{ textAlign: "center" }}>
-                        <Box
-                          sx={{
-                            width: "120px",
-                            height: "120px",
-                            backgroundColor: "#0C6B4D",
-                            borderRadius: "12px",
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-                            margin: "0 auto 16px",
-                            boxShadow: "0 4px 12px rgba(12, 107, 77, 0.3)",
-                          }}
-                        >
-                          <Typography
-                            sx={{
-                              fontSize: "56px",
-                              fontWeight: 700,
-                              color: "white",
-                              fontFamily: "Inter, Arial, sans-serif",
-                            }}
-                          >
-                            H
-                          </Typography>
-                        </Box>
-                        <Typography
-                          variant="body1"
-                          sx={{
-                            color: "#3F3B37",
-                            fontFamily: "Inter, Arial, sans-serif",
-                            fontWeight: 600,
-                            fontSize: "16px",
-                            mb: 1,
-                          }}
-                        >
-                          HeyGen Live Avatar
-                        </Typography>
-                        <Typography
-                          variant="body2"
-                          sx={{
-                            color: "#817973",
-                            fontFamily: "Inter, Arial, sans-serif",
-                            fontSize: "14px",
-                          }}
-                        >
-                          {isHeygenStreamReady
-                            ? "Connected"
-                            : isHeygenConnected
-                              ? "Loading stream..."
-                              : "Connecting..."}
-                        </Typography>
-                      </Box>
-                    </Box>
-                  )}
-
-                  {/* Connection indicator - only show when HeyGen stream is ready */}
-                  {isHeygenStreamReady && (
-                    <Box
-                      sx={{
-                        position: "absolute",
-                        top: 16,
-                        right: 16,
-                        display: "flex",
-                        alignItems: "center",
-                        gap: 1,
-                        backgroundColor: "rgba(255, 255, 255, 0.95)",
-                        backdropFilter: "blur(8px)",
-                        px: 2,
-                        py: 1,
-                        borderRadius: "8px",
-                        boxShadow: "0 2px 8px rgba(0, 0, 0, 0.1)",
-                      }}
-                    >
-                      <Box
-                        sx={{
-                          width: "8px",
-                          height: "8px",
-                          backgroundColor: "#22C55E",
-                          borderRadius: "50%",
-                          animation:
-                            "pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite",
-                          "@keyframes pulse": {
-                            "0%, 100%": { opacity: 1 },
-                            "50%": { opacity: 0.5 },
-                          },
-                        }}
-                      />
-                      <Typography
-                        variant="caption"
-                        sx={{
-                          color: "#3F3B37",
-                          fontFamily: "Inter, Arial, sans-serif",
-                          fontSize: "12px",
-                          fontWeight: 500,
-                        }}
-                      >
-                        Ready
-                      </Typography>
-                    </Box>
-                  )}
-                </Box>
+                <History history={chatHistory} latencyData={latencyData} />
               </Box>
-            )}
-
-            {/* Chat History */}
-            <Box
-              sx={{
-                flex: 1,
-                overflow: "hidden",
-                display: "flex",
-                flexDirection: "column",
-                paddingBottom: "140px",
-                transition: "padding-bottom 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
-              }}
-            >
-              <History history={chatHistory} latencyData={latencyData} />
-            </Box>
+            </Fade>
           </>
         ) : (
           // Case 2: Initial view without Heygen - Centered mic widget
