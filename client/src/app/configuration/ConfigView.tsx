@@ -87,6 +87,17 @@ export const ConfigView = (props: ConfigViewProps) => {
   const [assemblyAiApiKey, setAssemblyAiApiKey] = useState("");
   const [heygenApiKey, setHeygenApiKey] = useState("");
 
+  // Load cached API keys from sessionStorage on mount
+  useEffect(() => {
+    const cachedInworld = sessionStorage.getItem("cached_inworld_api_key");
+    const cachedAssembly = sessionStorage.getItem("cached_assembly_ai_api_key");
+    const cachedHeygen = sessionStorage.getItem("cached_heygen_api_key");
+
+    if (cachedInworld) setInworldApiKey(cachedInworld);
+    if (cachedAssembly) setAssemblyAiApiKey(cachedAssembly);
+    if (cachedHeygen) setHeygenApiKey(cachedHeygen);
+  }, []);
+
   // Fetch server configuration on mount
   useEffect(() => {
     const fetchConfig = async () => {
@@ -109,6 +120,44 @@ export const ConfigView = (props: ConfigViewProps) => {
     fetchConfig();
   }, []);
 
+  // Auto-clear cached API keys after inactivity
+  useEffect(() => {
+    let clearTimer: NodeJS.Timeout;
+
+    const clearCachedKeys = () => {
+      sessionStorage.removeItem("cached_inworld_api_key");
+      sessionStorage.removeItem("cached_assembly_ai_api_key");
+      sessionStorage.removeItem("cached_heygen_api_key");
+      setInworldApiKey("");
+      setAssemblyAiApiKey("");
+      setHeygenApiKey("");
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        // Page lost focus (minimized, switched tab, etc.)
+        // Auto-clear after 5 minutes of inactivity
+        clearTimer = setTimeout(() => {
+          clearCachedKeys();
+        }, 5 * 60 * 1000); // 5 minutes
+      } else {
+        // Page regained focus, cancel the auto-clear timer
+        if (clearTimer) {
+          clearTimeout(clearTimer);
+        }
+      }
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      if (clearTimer) {
+        clearTimeout(clearTimer);
+      }
+    };
+  }, []);
+
   const handleTemplateSelect = useCallback(
     (template: (typeof AGENT_TEMPLATES)[0]) => {
       setValue("agent.systemPrompt", template.systemPrompt);
@@ -125,6 +174,22 @@ export const ConfigView = (props: ConfigViewProps) => {
     },
     [setValue, getValues],
   );
+
+  // Handler for API key changes with sessionStorage caching
+  const handleInworldApiKeyChange = useCallback((value: string) => {
+    setInworldApiKey(value);
+    sessionStorage.setItem("cached_inworld_api_key", value);
+  }, []);
+
+  const handleAssemblyAiApiKeyChange = useCallback((value: string) => {
+    setAssemblyAiApiKey(value);
+    sessionStorage.setItem("cached_assembly_ai_api_key", value);
+  }, []);
+
+  const handleHeygenApiKeyChange = useCallback((value: string) => {
+    setHeygenApiKey(value);
+    sessionStorage.setItem("cached_heygen_api_key", value);
+  }, []);
 
   const handleStart = useCallback(async () => {
     setValue("user.name", "User"); // Set default name
@@ -326,9 +391,9 @@ export const ConfigView = (props: ConfigViewProps) => {
             showInworldKey={!inworldConfigured}
             showAssemblyAiKey={!assemblyAiConfigured}
             showHeygenKey={!heygenConfigured}
-            onInworldApiKeyChange={setInworldApiKey}
-            onAssemblyAiApiKeyChange={setAssemblyAiApiKey}
-            onHeygenApiKeyChange={setHeygenApiKey}
+            onInworldApiKeyChange={handleInworldApiKeyChange}
+            onAssemblyAiApiKeyChange={handleAssemblyAiApiKeyChange}
+            onHeygenApiKeyChange={handleHeygenApiKeyChange}
           />
         )}
 
