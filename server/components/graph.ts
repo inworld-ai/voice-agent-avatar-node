@@ -124,6 +124,10 @@ export class InworldGraphWrapper {
       ttsModelId,
     } = props;
 
+    if (!apiKey) {
+      throw new Error('Inworld API key is required to create graph');
+    }
+
     // Create unique postfix based on audio input, STT provider, and voiceId
     // Include voiceId to ensure each graph instance has unique node IDs
     let postfix = withAudioInput ? "-with-audio-input" : "-with-text-input";
@@ -215,7 +219,6 @@ export class InworldGraphWrapper {
       // ========================================================================
       // Assembly.AI Pipeline
       // ========================================================================
-      console.log("Building graph with Assembly.AI STT pipeline");
 
       // const assemblyAISTTNode = new AssemblyAISTTNode({
       //   id: `assembly-ai-stt-node${postfix}`,
@@ -285,7 +288,6 @@ export class InworldGraphWrapper {
         .addEdge(transcriptExtractorNode, interactionQueueNode)
         .addEdge(interactionQueueNode, textInputNode, {
           condition: (input: TextInput) => {
-            console.log("InteractionQueueNode: condition", input);
             return input.text && input.text.trim().length > 0;
           },
         })
@@ -301,6 +303,7 @@ export class InworldGraphWrapper {
     graphBuilder.setEndNode(ttsNode);
 
     const graph = graphBuilder.build();
+    
     if (props.graphVisualizationEnabled) {
       const graphPath = path.join(os.tmpdir(), `${graphName}.png`);
       console.log(

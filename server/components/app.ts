@@ -51,7 +51,6 @@ export class InworldApp {
     this.heygenApiKey = this.env.heygenApiKey;
 
     // Initialize the VAD client for Assembly.AI
-    console.log("Loading VAD model from:", this.vadModelPath);
     this.vadClient = await VADFactory.createLocal({
       modelPath: this.vadModelPath,
     });
@@ -89,9 +88,6 @@ export class InworldApp {
         vadClient: this.vadClient,
       });
       this.sessionTextGraphs.set(voiceId, graph);
-      console.log(`Text graph created for voiceId: ${voiceId}`);
-    } else {
-      console.log(`Using cached text graph for voiceId: ${voiceId}`);
     }
 
     return graph;
@@ -133,7 +129,6 @@ export class InworldApp {
     let graph = this.sessionAudioGraphs.get(voiceId);
 
     if (!graph) {
-      console.log(`Creating Assembly.AI STT graph for voiceId: ${voiceId}`);
       graph = await InworldGraphWrapper.create({
         apiKey, // Use session-specific API key
         llmModelName: this.llmModelName,
@@ -149,117 +144,115 @@ export class InworldApp {
         assemblyAIApiKey, // Use session-specific API key
       });
       this.sessionAudioGraphs.set(voiceId, graph);
-      console.log(`Assembly.AI STT graph created for voiceId: ${voiceId}`);
-    } else {
-      console.log(`Using cached Assembly.AI STT graph for voiceId: ${voiceId}`);
     }
 
     return graph;
   }
 
   async load(req: any, res: any) {
-    res.setHeader("Content-Type", "application/json");
-
-    const errors = validationResult(req);
-
-    if (!errors.isEmpty()) {
-      return res.status(400).json({ errors: errors.array() });
-    }
-
-    const agent = {
-      ...req.body.agent,
-      id: v4(),
-    };
-
     const sessionId = req.query.sessionId;
-    const systemMessageId = v4();
-    const sttService = req.body.sttService || "assemblyai"; // Default to Assembly.AI
+    
+    try {
+      res.setHeader("Content-Type", "application/json");
 
-    // Get API keys from request body (client input) or use server env vars
-    const clientApiKeys = req.body.apiKeys || {};
-    const effectiveInworldApiKey = clientApiKeys.inworldApiKey || this.env.apiKey;
-    const effectiveAssemblyAiApiKey =
-      clientApiKeys.assemblyAiApiKey || this.env.assemblyAIApiKey;
-    const effectiveHeygenApiKey =
-      clientApiKeys.heygenApiKey || this.env.heygenApiKey;
+      const errors = validationResult(req);
 
-    // Validate required API keys
-    if (!effectiveInworldApiKey) {
-      return res.status(400).json({
-        error: `INWORLD_API_KEY is required. Please provide it in the client or set it in the server environment.`,
-      });
-    }
+      if (!errors.isEmpty()) {
+        return res.status(400).json({ errors: errors.array() });
+      }
 
-    // Validate STT service availability BEFORE creating session
-    if (sttService !== "assemblyai") {
-      return res.status(400).json({
-        error: `Only Assembly.AI STT is supported`,
-        availableServices: ["assemblyai"],
-        requestedService: sttService,
-      });
-    }
+      const agent = {
+        ...req.body.agent,
+        id: v4(),
+      };
 
-    if (!effectiveAssemblyAiApiKey) {
-      return res.status(400).json({
-        error: `Assembly.AI STT requested but ASSEMBLY_AI_API_KEY is not configured on server or provided by client`,
-        availableServices: ["assemblyai"],
-        requestedService: sttService,
-      });
-    }
+      const systemMessageId = v4();
+      const sttService = req.body.sttService || "assemblyai"; // Default to Assembly.AI
 
-    // Get agent-specific configuration based on systemPrompt
-    const agentConfig = getAgentConfig(agent.systemPrompt || "");
+      // Get API keys from request body (client input) or use server env vars
+      const clientApiKeys = req.body.apiKeys || {};
+      const effectiveInworldApiKey = clientApiKeys.inworldApiKey || this.env.apiKey;
+      const effectiveAssemblyAiApiKey =
+        clientApiKeys.assemblyAiApiKey || this.env.assemblyAIApiKey;
+      const effectiveHeygenApiKey =
+        clientApiKeys.heygenApiKey || this.env.heygenApiKey;
 
-    console.log(
-      `\n[Session ${sessionId}] Creating new session with STT: ${sttService}`,
-    );
-    console.log(
-      `[Session ${sessionId}] Agent config: voiceId="${agentConfig.voiceId}", avatarId="${agentConfig.heygenAvatarId || "none"}"`,
-    );
-    console.log(
-      `[Session ${sessionId}] Using ${clientApiKeys.inworldApiKey ? "client" : "server"} Inworld API key`,
-    );
-    console.log(
-      `[Session ${sessionId}] Using ${clientApiKeys.assemblyAiApiKey ? "client" : "server"} Assembly.AI API key`,
-    );
-    console.log(
-      `[Session ${sessionId}] Using ${clientApiKeys.heygenApiKey ? "client" : "server"} HeyGen API key`,
-    );
+      // Validate required API keys
+      if (!effectiveInworldApiKey) {
+        console.error(`[Session ${sessionId}] Inworld API key is missing`);
+        return res.status(400).json({
+          error: `INWORLD_API_KEY is required. Please provide it in the client or set it in the server environment.`,
+        });
+      }
 
-    this.connections[sessionId] = {
-      state: {
-        interactionId: systemMessageId, // Initialize with system message ID
-        messages: [
-          {
-            role: "system",
-            content: this.createSystemMessage(agent, req.body.userName),
-            id: "system" + systemMessageId,
-          },
-        ],
-        agent,
-        userName: req.body.userName,
-        voiceId: agentConfig.voiceId, // Use agent-specific voiceId
-      },
-      ws: null,
-      sttService, // Store STT service choice for this session
-      agentConfig, // Store agent config for later use
-      apiKeys: {
-        // Store effective API keys for this session
-        inworldApiKey: effectiveInworldApiKey,
-        assemblyAiApiKey: effectiveAssemblyAiApiKey,
-        heygenApiKey: effectiveHeygenApiKey,
-      },
-    };
+      // Validate STT service availability BEFORE creating session
+      if (sttService !== "assemblyai") {
+        return res.status(400).json({
+          error: `Only Assembly.AI STT is supported`,
+          availableServices: ["assemblyai"],
+          requestedService: sttService,
+        });
+      }
 
-    // Return agent info and config to client
-    res.end(
-      JSON.stringify({
-        agent,
-        agentConfig: {
-          heygenAvatarId: agentConfig.heygenAvatarId,
+      if (!effectiveAssemblyAiApiKey) {
+        console.error(`[Session ${sessionId}] Assembly.AI API key is missing`);
+        return res.status(400).json({
+          error: `Assembly.AI STT requested but ASSEMBLY_AI_API_KEY is not configured on server or provided by client`,
+          availableServices: ["assemblyai"],
+          requestedService: sttService,
+        });
+      }
+
+      // Get agent-specific configuration based on systemPrompt
+      const agentConfig = getAgentConfig(agent.systemPrompt || "");
+
+      console.log(`[Session ${sessionId}] Creating session with voice: ${agentConfig.voiceId}`);
+
+      this.connections[sessionId] = {
+        state: {
+          interactionId: systemMessageId, // Initialize with system message ID
+          messages: [
+            {
+              role: "system",
+              content: this.createSystemMessage(agent, req.body.userName),
+              id: "system" + systemMessageId,
+            },
+          ],
+          agent,
+          userName: req.body.userName,
+          voiceId: agentConfig.voiceId, // Use agent-specific voiceId
         },
-      }),
-    );
+        ws: null,
+        sttService, // Store STT service choice for this session
+        agentConfig, // Store agent config for later use
+        apiKeys: {
+          // Store effective API keys for this session
+          inworldApiKey: effectiveInworldApiKey,
+          assemblyAiApiKey: effectiveAssemblyAiApiKey,
+          heygenApiKey: effectiveHeygenApiKey,
+        },
+      };
+
+      // Return agent info and config to client
+      res.end(
+        JSON.stringify({
+          agent,
+          agentConfig: {
+            heygenAvatarId: agentConfig.heygenAvatarId,
+          },
+        }),
+      );
+    } catch (error: any) {
+      console.error(`[Session ${sessionId || 'unknown'}] ERROR in load:`, {
+        message: error.message,
+        stack: error.stack,
+        name: error.name,
+      });
+      return res.status(500).json({
+        error: "Failed to create session",
+        details: error.message,
+      });
+    }
   }
 
   private createSystemMessage(agent: any, userName: string) {

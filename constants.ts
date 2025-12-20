@@ -25,4 +25,12 @@ export const TEXT_CONFIG = {
   stopSequences: ["\n\n"],
 };
 
-export const WS_APP_PORT = 4000;
+
+export const WS_APP_PORT = (() => {
+  try {
+    const proc = (globalThis as any).process;
+    return proc?.env?.PORT ? parseInt(proc.env.PORT) : 4000;
+  } catch {
+    return 4000;
+  }
+})();

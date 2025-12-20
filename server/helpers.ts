@@ -41,7 +41,7 @@ export function extractAgentNameFromPrompt(prompt: string): string | null {
 /**
  * Standardizes agent name to environment variable key format.
  * "Santa Claus" → "SANTA_CLAUS"
- * "Coach Dennis" → "COACH_DENNIS"
+ * "Coach Carter" → "COACH_CARTER"
  *
  * @param name - Agent name to normalize
  * @returns Normalized name for env var lookup
@@ -114,14 +114,8 @@ export function detectGenderFromPrompt(
   ).length;
 
   if (femaleCount > maleCount && femaleCount > 0) {
-    console.log(
-      `Detected gender "female" from keywords (${femaleCount} female vs ${maleCount} male)`,
-    );
     return "female";
   } else if (maleCount > femaleCount && maleCount > 0) {
-    console.log(
-      `Detected gender "male" from keywords (${maleCount} male vs ${femaleCount} female)`,
-    );
     return "male";
   }
 
@@ -150,11 +144,6 @@ export function getAgentConfig(systemPrompt: string): {
     const heygenAvatarId = process.env[`HEYGEN_AVATAR_ID_${normalized}`];
 
     if (voiceId || heygenAvatarId) {
-      console.log(`Found config for agent "${agentName}":`, {
-        voiceId: voiceId || "using default",
-        heygenAvatarId: heygenAvatarId || "using default",
-      });
-
       return {
         voiceId: voiceId || process.env.DEFAULT_VOICE_ID || DEFAULT_VOICE_ID,
         heygenAvatarId: heygenAvatarId || process.env.DEFAULT_HEYGEN_AVATAR_ID,
@@ -166,9 +155,6 @@ export function getAgentConfig(systemPrompt: string): {
   const gender = detectGenderFromPrompt(systemPrompt);
 
   if (gender === "female") {
-    console.log(
-      "Detected female character in custom prompt, using female voice and avatar",
-    );
     return {
       voiceId: process.env.DEFAULT_FEMALE_VOICE_ID,
       heygenAvatarId: process.env.DEFAULT_FEMALE_HEYGEN_AVATAR_ID,
@@ -176,9 +162,6 @@ export function getAgentConfig(systemPrompt: string): {
   }
 
   // 4. Use default values (for male or undetected gender)
-  console.log(
-    `Using default voice and avatar${gender === "male" ? " (detected male)" : ""}`,
-  );
   return {
     voiceId: process.env.DEFAULT_VOICE_ID || DEFAULT_VOICE_ID,
     heygenAvatarId: process.env.DEFAULT_HEYGEN_AVATAR_ID,
@@ -192,25 +175,16 @@ export const parseEnvironmentVariables = () => {
   const heygenApiKey = process.env.HEYGEN_API_KEY?.trim();
 
   // Log configuration status for all API keys
+  // Log API key configuration status (without revealing keys)
   if (inworldApiKey) {
-    console.log(`Inworld API key configured on server`);
-  } else {
-    console.log(`Inworld API key not set on server (can be provided by client)`);
+    console.log(`Inworld API key: configured on server`);
   }
-
   if (assemblyAIApiKey) {
-    console.log(`Assembly.AI API key configured on server`);
-  } else {
-    console.log(`Assembly.AI API key not set on server (can be provided by client)`);
+    console.log(`Assembly.AI API key: configured on server`);
   }
-
   if (heygenApiKey) {
-    console.log(`HeyGen API key configured on server`);
-  } else {
-    console.log(`HeyGen API key not set on server (can be provided by client)`);
+    console.log(`HeyGen API key: configured on server`);
   }
-
-  console.log(`Available STT service: Assembly.AI`);
 
   return {
     apiKey: inworldApiKey || "",

@@ -14,7 +14,15 @@ export async function startHeygenSession(req: Request, res: Response) {
     }
 
     // Use provided avatarId or fall back to default
+    // HeyGen requires UUID format for avatar_id
     const finalAvatarId = avatarId || process.env.DEFAULT_HEYGEN_AVATAR_ID;
+    
+    if (!finalAvatarId) {
+      console.error('HeyGen avatar ID is missing. Please provide avatarId or set DEFAULT_HEYGEN_AVATAR_ID environment variable.');
+      return res.status(400).json({
+        error: 'HeyGen avatar ID is required. Avatar ID must be a valid UUID format. Get your avatar ID from HeyGen dashboard.',
+      });
+    }
 
     // Call HeyGen API to create session
     // Note: We use Inworld TTS for voice, so we only need the avatar for visual display
@@ -36,10 +44,20 @@ export async function startHeygenSession(req: Request, res: Response) {
 
     if (!response.ok) {
       const error = await response.json();
-      console.error("HeyGen API error:", error);
+      console.error("HeyGen API error:", {
+        status: response.status,
+        statusText: response.statusText,
+        error,
+        requestBody: {
+          mode: "CUSTOM",
+          avatar_id: finalAvatarId,
+          quality: "high",
+        },
+      });
       return res.status(response.status).json({
         error: "Failed to create HeyGen session",
         details: error,
+        avatarId: finalAvatarId,
       });
     }
 

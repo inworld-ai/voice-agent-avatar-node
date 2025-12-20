@@ -34,33 +34,35 @@ export class MessageHandler {
   }
 
   async handleMessage(data: RawData, sessionId: string) {
-    const message = JSON.parse(data.toString());
-    switch (message.type) {
-      case "text":
-      case EVENT_TYPE.TEXT:
-        this.createNewInteraction("Starting a new interaction from text input");
-        const textInteractionId = this.currentInteractionId;
+    try {
+      const message = JSON.parse(data.toString());
+      
+      switch (message.type) {
+        case "text":
+        case EVENT_TYPE.TEXT:
+          this.createNewInteraction(`[Session ${sessionId}] Starting a new interaction from text input`);
+          const textInteractionId = this.currentInteractionId;
 
-        let textInput = {
-          text: message.text,
-          interactionId: textInteractionId,
-          sessionId,
-        } as TextInput;
-
-        // Get session-specific text graph with the right voiceId
-        const textGraph =
-          await this.inworldApp.getTextGraphForSession(sessionId);
-
-        this.addToQueue(() =>
-          this.executeGraph({
-            sessionId,
-            input: textInput,
+          let textInput = {
+            text: message.text,
             interactionId: textInteractionId,
-            graphWrapper: textGraph,
-          }),
-        );
+            sessionId,
+          } as TextInput;
 
-        break;
+          // Get session-specific text graph with the right voiceId
+          const textGraph =
+            await this.inworldApp.getTextGraphForSession(sessionId);
+
+          this.addToQueue(() =>
+            this.executeGraph({
+              sessionId,
+              input: textInput,
+              interactionId: textInteractionId,
+              graphWrapper: textGraph,
+            }),
+          );
+
+          break;
 
       case "audio":
       case EVENT_TYPE.AUDIO:
@@ -70,10 +72,8 @@ export class MessageHandler {
 
       case EVENT_TYPE.AUDIO_SESSION_END:
         // Audio session ended - close the stream and wait for graph completion
-        console.log("Audio session ended for sessionId:", sessionId);
         const audioConnection = this.inworldApp.connections[sessionId];
         if (audioConnection?.audioStreamManager) {
-          console.log("Ending audio stream for sessionId:", sessionId);
           audioConnection.audioStreamManager.end();
 
           // Wait for the graph execution to complete
@@ -82,6 +82,15 @@ export class MessageHandler {
           }
         }
         break;
+        
+      default:
+        console.warn(`[Session ${sessionId}] Unknown message type: ${message.type}`);
+    }
+    } catch (error: any) {
+      console.error(`[Session ${sessionId}] ERROR handling message:`, {
+        error: error.message,
+        stack: error.stack,
+      });
     }
   }
 
@@ -89,9 +98,10 @@ export class MessageHandler {
     try {
       const connection = this.inworldApp.connections[sessionId];
       if (!connection) {
-        console.error(`No connection found for sessionId: ${sessionId}`);
+        console.error(`[Session ${sessionId}] ERROR: No connection found for audio chunk`);
         return;
       }
+      
 
       // Flatten audio array into single buffer
       const audioData: number[] = [];
@@ -225,9 +235,6 @@ export class MessageHandler {
 
       for await (const result of outputStream) {
         resultCount++;
-        console.log(
-          `[Session ${sessionId}] Processing audio interaction ${resultCount} from stream`,
-        );
 
         // Check if result contains an error
         if (result && result.isGraphError && result.isGraphError()) {
@@ -284,9 +291,6 @@ export class MessageHandler {
         }
       }
 
-      console.log(
-        `[Session ${sessionId}] Audio stream processing complete - processed ${resultCount} result(s)`,
-      );
     } catch (error) {
       console.error("Error processing audio stream interactions:", error);
       throw error;
@@ -306,7 +310,6 @@ export class MessageHandler {
   ): Promise<string | undefined> {
     // Log result type for debugging
     const resultType = result?.data?.constructor?.name || typeof result?.data;
-    console.log(`[Session ${sessionId}] Processing result type: ${resultType}`);
 
     try {
       await result.processResponse({

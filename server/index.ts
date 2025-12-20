@@ -44,35 +44,30 @@ webSocket.on("connection", (ws, request) => {
   const sessionId = query.sessionId?.toString();
 
   if (!inworldApp.connections?.[sessionId]) {
-    console.log(`Session not found: ${sessionId}`);
+    console.error(`[Session ${sessionId}] Session not found`);
     ws.close(1008, "Session not found");
     return;
   }
-
+  
   inworldApp.connections[sessionId].ws =
     inworldApp.connections[sessionId].ws ?? ws;
 
-  ws.on("error", console.error);
+  ws.on("error", (error) => {
+    console.error(`[Session ${sessionId}] WebSocket error:`, error);
+  });
 
   const messageHandler = new MessageHandler(inworldApp, (data: any) =>
     ws.send(JSON.stringify(data)),
   );
 
-  ws.on("message", (data: RawData) =>
-    messageHandler.handleMessage(data, sessionId),
-  );
+  ws.on("message", (data: RawData) => {
+    messageHandler.handleMessage(data, sessionId);
+  });
 
   ws.on("close", (code, reason) => {
-    console.log(
-      `[Session ${sessionId}] WebSocket closed: code=${code}, reason=${reason.toString()}`,
-    );
-
     // Clean up audio stream if it exists
     const connection = inworldApp.connections[sessionId];
     if (connection?.audioStreamManager) {
-      console.log(
-        `[Session ${sessionId}] Ending audio stream due to WebSocket close`,
-      );
       connection.audioStreamManager.end();
       connection.audioStreamManager = undefined;
     }
@@ -113,14 +108,17 @@ server.on("upgrade", async (request, socket, head) => {
   }
 });
 
-server.listen(WS_APP_PORT, async () => {
+// Cloud Run provides PORT environment variable, default to 4000 for local development
+const PORT = process.env.PORT ? parseInt(process.env.PORT) : WS_APP_PORT;
+
+server.listen(PORT, async () => {
   try {
     await inworldApp.initialize();
   } catch (error) {
     console.error(error);
   }
 
-  console.log(`Server is running on port ${WS_APP_PORT}`);
+  console.log(`Server is running on port ${PORT}`);
 });
 
 function done() {
