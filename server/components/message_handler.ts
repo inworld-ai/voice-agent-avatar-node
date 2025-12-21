@@ -376,10 +376,6 @@ export class MessageHandler {
             // Use the full interactionId from the event (compound ID like "abc123#1")
             const effectiveInteractionId =
               customData.interactionId || String(customData.iteration);
-            console.log(
-              `User speech complete (VAD) - Interaction: ${effectiveInteractionId}, ` +
-                `Iteration: ${customData.iteration}, Samples: ${customData.totalSamples}, Endpointing Latency: ${customData.endpointingLatencyMs}ms`,
-            );
 
             // Send USER_SPEECH_COMPLETE event to client for latency tracking
             this.send(

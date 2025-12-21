@@ -157,7 +157,6 @@ export class AudioStreamSlicerNode extends CustomNode {
       const chunkDurationMs = (result.data.length / result.sampleRate) * 1000;
 
       if (isSpeech) {
-        console.log(`[${new Date().toISOString()}] Speech detected...`);
         // Speech detected - accumulate this chunk
         accumulatedAudio.push(...Array.from(result.data));
 
@@ -172,10 +171,6 @@ export class AudioStreamSlicerNode extends CustomNode {
         // Check if we've exceeded the pause threshold
         if (endpointingLatency >= this.pauseDurationMs) {
           // Complete the interaction - we have speech without trailing silence
-          console.log(
-            `[Iteration ${iteration}] Interaction complete: ${accumulatedAudio.length} samples, ` +
-              `${endpointingLatency.toFixed(0)}ms endpointing latency (not included)`,
-          );
           break;
         }
       }

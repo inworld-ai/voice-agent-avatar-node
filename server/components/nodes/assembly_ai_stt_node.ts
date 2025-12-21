@@ -514,16 +514,9 @@ export class AssemblyAISTTNode extends CustomNode {
             if (isSpeech) {
               // Speech detected - reset endpointing latency counter
               endpointingLatency = 0;
-              console.log(`[${new Date().toISOString()}] Speech detected...`);
             } else {
               // No speech - accumulate endpointing latency
               endpointingLatency += chunkDurationMs;
-            }
-
-            if (audioChunkCount % 20 === 0) {
-              console.log(
-                `[AssemblyAI STT - Iteration ${iteration}] Processed ${audioChunkCount} chunks, ${totalAudioSamples} total samples, endpointing latency: ${endpointingLatency.toFixed(0)}ms`,
-              );
             }
 
             // After processing the chunk, check if we should stop
@@ -582,10 +575,6 @@ export class AssemblyAISTTNode extends CustomNode {
       });
 
       // Return DataStreamWithMetadata with transcript in metadata
-      console.log(
-        `[${new Date().toISOString()}] [AssemblyAI STT - Iteration ${iteration}] Returning DataStreamWithMetadata with transcript: "${transcriptText}", endpointing latency: ${endpointingLatency.toFixed(0)}ms`,
-      );
-
       return new DataStreamWithMetadata(audioStream, {
         elementType: "Audio",
         iteration: iteration,

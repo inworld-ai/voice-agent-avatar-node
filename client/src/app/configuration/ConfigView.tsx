@@ -399,68 +399,6 @@ export const ConfigView = (props: ConfigViewProps) => {
           />
         )}
 
-        {/* Show info message when all keys are configured on server */}
-        {!configLoading &&
-          inworldConfigured &&
-          assemblyAiConfigured &&
-          heygenConfigured && (
-            <Box sx={{ mb: 3 }}>
-              <Paper
-                elevation={0}
-                sx={{
-                  backgroundColor: "#F0F9F4",
-                  border: "1px solid #C6E7D5",
-                  borderRadius: "12px",
-                  overflow: "hidden",
-                }}
-              >
-                <Box
-                  sx={{
-                    p: "16px 20px",
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 1.5,
-                  }}
-                >
-                  <Box
-                    sx={{
-                      width: "20px",
-                      height: "20px",
-                      borderRadius: "50%",
-                      backgroundColor: "#22C55E",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      flexShrink: 0,
-                    }}
-                  >
-                    <Typography
-                      sx={{
-                        color: "white",
-                        fontSize: "14px",
-                        fontWeight: 700,
-                        lineHeight: 1,
-                      }}
-                    >
-                      &#10003;
-                    </Typography>
-                  </Box>
-                  <Typography
-                    variant="body2"
-                    sx={{
-                      color: "#166534",
-                      fontSize: "14px",
-                      fontFamily: "Inter, Arial, sans-serif",
-                      fontWeight: 500,
-                    }}
-                  >
-                    All API keys configured on server
-                  </Typography>
-                </Box>
-              </Paper>
-            </Box>
-          )}
-
         {/* Create Button */}
         {systemPrompt && (
           <Box sx={{ display: "flex", justifyContent: "center", mt: 2 }}>

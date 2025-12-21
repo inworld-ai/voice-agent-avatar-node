@@ -47,11 +47,6 @@ export class SpeechCompleteNotifierNode extends CustomNode<
       (metadata.total_samples as number) ||
       0;
 
-    console.log(
-      `[SpeechCompleteNotifier] User speech complete - Session: ${sessionId}, ` +
-        `InteractionId: ${interactionId}, Iteration: ${iteration}, Samples: ${totalSamples}, Latency: ${metadata.endpointing_latency_ms}ms`,
-    );
-
     // Create and return the notification event for the client
     return {
       type: "SPEECH_COMPLETE",
