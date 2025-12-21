@@ -4,6 +4,7 @@
 [![Powered by Inworld AI](https://img.shields.io/badge/Powered_by-Inworld_AI-orange)](https://inworld.ai/runtime)
 [![Documentation](https://img.shields.io/badge/Documentation-Read_Docs-blue)](https://docs.inworld.ai/docs/node/overview)
 [![Model Providers](https://img.shields.io/badge/Model_Providers-See_Models-purple)](https://docs.inworld.ai/docs/models#llm)
+[![Live Demo](https://img.shields.io/badge/Live_Demo-Try_It_Now-brightgreen)](https://voice-agent-avatar-client-36767496252.us-central1.run.app)
 
 This application demonstrates a chat agent with realistic live avatar visualization. Built on [Inworld voice-agent-node template](https://github.com/inworld-ai/voice-agent-node) and enhanced with **HeyGen Live Avatar** integration, featuring low latency real-time animated avatars, powered by Inworld AI Runtime.
 
