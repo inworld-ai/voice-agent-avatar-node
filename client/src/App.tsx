@@ -558,12 +558,6 @@ function App() {
         toast.success("HeyGen avatar ready");
       });
 
-      // Listen for errors
-      session.on("error", (error: any) => {
-        console.error("HeyGen session error:", error);
-        toast.error(`HeyGen error: ${error.message || "Unknown error"}`);
-      });
-
       setHeygenSession(session);
       await session.start();
     } catch (error) {
@@ -744,6 +738,9 @@ function App() {
     // Stop HeyGen session if active
     if (currentHeygenSession) {
       try {
+        // Remove all event listeners before stopping to prevent state issues on reconnect
+        currentHeygenSession.removeAllListeners();
+        
         await currentHeygenSession.stop();
 
         if (currentToken) {
