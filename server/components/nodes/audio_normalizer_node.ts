@@ -36,14 +36,22 @@ export class AudioNormalizerNode extends CustomNode<
   }
 
   /**
-   * Normalize audio buffer by finding max absolute value and dividing all samples
+   * Normalize audio buffer by finding max absolute value and dividing all samples.
+   * Audio data is a Buffer containing Float32 samples.
    */
-  private normalizeAudio(audioBuffer: number[]): number[] {
+  private normalizeAudio(audioBuffer: Buffer): Buffer {
+    // Interpret buffer as Float32Array
+    const float32 = new Float32Array(
+      audioBuffer.buffer,
+      audioBuffer.byteOffset,
+      audioBuffer.byteLength / 4,
+    );
+
     let maxVal = 0;
 
     // Find maximum absolute value
-    for (let i = 0; i < audioBuffer.length; i++) {
-      maxVal = Math.max(maxVal, Math.abs(audioBuffer[i]));
+    for (let i = 0; i < float32.length; i++) {
+      maxVal = Math.max(maxVal, Math.abs(float32[i]));
     }
 
     // If all samples are zero, return as-is
@@ -52,11 +60,11 @@ export class AudioNormalizerNode extends CustomNode<
     }
 
     // Create normalized copy
-    const normalizedBuffer = [];
-    for (let i = 0; i < audioBuffer.length; i++) {
-      normalizedBuffer.push(audioBuffer[i] / maxVal);
+    const normalizedFloat32 = new Float32Array(float32.length);
+    for (let i = 0; i < float32.length; i++) {
+      normalizedFloat32[i] = float32[i] / maxVal;
     }
 
-    return normalizedBuffer;
+    return Buffer.from(normalizedFloat32.buffer);
   }
 }
