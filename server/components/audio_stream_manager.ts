@@ -1,4 +1,4 @@
-import { AudioChunkInterface } from "@inworld/runtime/common";
+import { AudioChunkData } from "../types";
 
 /**
  * Manages a stream of audio chunks that can be fed asynchronously
@@ -11,7 +11,7 @@ import { AudioChunkInterface } from "@inworld/runtime/common";
 // Type for plain audio objects expected by the framework
 type PlainAudioChunk = {
   type: "Audio";
-  data: { data: number[]; sampleRate: number };
+  data: { data: Buffer; sampleRate: number };
 };
 
 export class AudioStreamManager {
@@ -24,16 +24,27 @@ export class AudioStreamManager {
   /**
    * Add an audio chunk to the stream
    */
-  pushChunk(chunk: AudioChunkInterface): void {
+  pushChunk(chunk: AudioChunkData): void {
     if (this.ended) {
       return;
+    }
+
+    // Convert data to Buffer for framework expectations
+    let bufferData: Buffer;
+    if (Buffer.isBuffer(chunk.data)) {
+      bufferData = chunk.data;
+    } else if (chunk.data instanceof Float32Array) {
+      bufferData = Buffer.from(chunk.data.buffer, chunk.data.byteOffset, chunk.data.byteLength);
+    } else {
+      // number[] - convert via Float32Array
+      bufferData = Buffer.from(new Float32Array(chunk.data).buffer);
     }
 
     // Create plain audio object matching framework expectations
     const audioData: PlainAudioChunk = {
       type: "Audio",
       data: {
-        data: Array.isArray(chunk.data) ? chunk.data : Array.from(chunk.data),
+        data: bufferData,
         sampleRate: chunk.sampleRate,
       },
     };
