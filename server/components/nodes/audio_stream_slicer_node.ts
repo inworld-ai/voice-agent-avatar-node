@@ -134,8 +134,7 @@ export class AudioStreamSlicerNode extends CustomNode {
 
     // Process chunks until we detect a complete interaction or stream ends
     while (!isStreamExhausted) {
-      const result: { data: Float32Array; sampleRate: number; done: boolean } =
-        await audioStream.next();
+      const result = await audioStream.next();
 
       if (result.done) {
         console.log(
@@ -148,17 +147,25 @@ export class AudioStreamSlicerNode extends CustomNode {
       // Update sample rate from chunk
       sampleRate = result.sampleRate;
 
+      // Audio data is now Buffer - interpret as Float32Array for processing
+      const chunkBuffer: Buffer = result.data as Buffer;
+      const chunkFloat32 = new Float32Array(
+        chunkBuffer.buffer,
+        chunkBuffer.byteOffset,
+        chunkBuffer.byteLength / 4,
+      );
+
       // Detect voice activity in this chunk
       const isSpeech = await this.detectSpeech({
-        data: result.data,
+        data: chunkBuffer,
         sampleRate: result.sampleRate,
       });
 
-      const chunkDurationMs = (result.data.length / result.sampleRate) * 1000;
+      const chunkDurationMs = (chunkFloat32.length / result.sampleRate) * 1000;
 
       if (isSpeech) {
         // Speech detected - accumulate this chunk
-        accumulatedAudio.push(...Array.from(result.data));
+        accumulatedAudio.push(...Array.from(chunkFloat32));
 
         // Reset endpointing latency counter and mark speech as detected
         speechDetected = true;
@@ -181,7 +188,7 @@ export class AudioStreamSlicerNode extends CustomNode {
     const completedAudio =
       speechDetected && accumulatedAudio.length > 0
         ? new GraphTypes.Audio({
-            data: accumulatedAudio,
+            data: Buffer.from(new Float32Array(accumulatedAudio).buffer),
             sampleRate: sampleRate,
           })
         : null;
@@ -200,10 +207,11 @@ export class AudioStreamSlicerNode extends CustomNode {
             return;
           })(),
           {
-            type: "Audio",
+            type: "Audio" as const,
             abort: () => {
               // No-op for exhausted stream
             },
+            getMetadata: () => ({} as Record<string, any>),
           },
         )
       : audioStream;
@@ -228,7 +236,7 @@ export class AudioStreamSlicerNode extends CustomNode {
    * @returns true if speech is detected, false otherwise
    */
   private async detectSpeech(audioChunk: {
-    data: Float32Array | number[];
+    data: Buffer;
     sampleRate: number;
   }): Promise<boolean> {
     if (!this.vad) {
@@ -236,17 +244,12 @@ export class AudioStreamSlicerNode extends CustomNode {
     }
 
     try {
-      // Convert to array if needed
-      const dataArray = Array.isArray(audioChunk.data)
-        ? audioChunk.data
-        : Array.from(audioChunk.data);
-
       const vadResult = await this.vad.detectVoiceActivity(
         {
-          data: dataArray,
+          data: audioChunk.data,
           sampleRate: audioChunk.sampleRate,
         },
-        this.speechThreshold,
+        { speechThreshold: this.speechThreshold },
       );
 
       // Result is the sample index where speech is detected, or -1 if no speech
