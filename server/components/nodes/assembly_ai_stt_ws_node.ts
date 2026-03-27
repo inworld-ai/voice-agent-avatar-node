@@ -514,11 +514,7 @@ export class AssemblyAISTTWebSocketNode extends CustomNode {
               break;
             }
 
-            const result: {
-              data: Float32Array;
-              sampleRate: number;
-              done: boolean;
-            } = await audioStream.next();
+            const result = await audioStream.next();
 
             if (result.done) {
               console.log(
@@ -550,10 +546,12 @@ export class AssemblyAISTTWebSocketNode extends CustomNode {
             }
 
             audioChunkCount++;
-            totalAudioSamples += result.data.length;
+            const chunkBuffer: Buffer = result.data as Buffer;
+            const numSamples = chunkBuffer.byteLength / 4; // Float32 = 4 bytes per sample
+            totalAudioSamples += numSamples;
 
-            // Convert Float32Array to Int16Array (PCM16)
-            const pcm16Data = this.convertToPCM16(result.data);
+            // Convert Buffer (Float32) to Int16Array (PCM16)
+            const pcm16Data = this.convertToPCM16(chunkBuffer);
 
             // Send audio data to Assembly.AI WebSocket
             try {
@@ -575,12 +573,12 @@ export class AssemblyAISTTWebSocketNode extends CustomNode {
 
             // Detect speech in this chunk using VAD (after sending to Assembly.AI)
             const isSpeech = await this.detectSpeech({
-              data: result.data,
+              data: chunkBuffer,
               sampleRate: result.sampleRate,
             });
 
             const chunkDurationMs =
-              (result.data.length / result.sampleRate) * 1000;
+              (numSamples / result.sampleRate) * 1000;
 
             if (isSpeech) {
               // Speech detected - reset endpointing latency counter
@@ -731,7 +729,13 @@ export class AssemblyAISTTWebSocketNode extends CustomNode {
    * Convert Float32Array audio data to Int16Array PCM16 format
    * Assembly.AI expects PCM16 audio data
    */
-  private convertToPCM16(float32Data: Float32Array): Int16Array {
+  private convertToPCM16(audioBuffer: Buffer): Int16Array {
+    // Interpret buffer as Float32Array
+    const float32Data = new Float32Array(
+      audioBuffer.buffer,
+      audioBuffer.byteOffset,
+      audioBuffer.byteLength / 4,
+    );
     const pcm16 = new Int16Array(float32Data.length);
     for (let i = 0; i < float32Data.length; i++) {
       // Clamp values to [-1, 1] range
@@ -747,7 +751,7 @@ export class AssemblyAISTTWebSocketNode extends CustomNode {
    * @returns true if speech is detected, false otherwise
    */
   private async detectSpeech(audioChunk: {
-    data: Float32Array | number[];
+    data: Buffer;
     sampleRate: number;
   }): Promise<boolean> {
     if (!this.vad) {
@@ -755,17 +759,12 @@ export class AssemblyAISTTWebSocketNode extends CustomNode {
     }
 
     try {
-      // Convert to array if needed
-      const dataArray = Array.isArray(audioChunk.data)
-        ? audioChunk.data
-        : Array.from(audioChunk.data);
-
       const vadResult = await this.vad.detectVoiceActivity(
         {
-          data: dataArray,
+          data: audioChunk.data,
           sampleRate: audioChunk.sampleRate,
         },
-        this.speechThreshold,
+        { speechThreshold: this.speechThreshold },
       );
 
       // Result is the sample index where speech is detected, or -1 if no speech

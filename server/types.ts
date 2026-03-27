@@ -1,6 +1,10 @@
-import { AudioChunkInterface } from "@inworld/runtime/common";
-
 import { AudioStreamManager } from "./components/audio_stream_manager";
+
+/** Local replacement for the removed AudioChunkInterface */
+export interface AudioChunkData {
+  data: number[] | Float32Array | Buffer;
+  sampleRate: number;
+}
 
 export enum EVENT_TYPE {
   TEXT = "TEXT",
@@ -39,7 +43,7 @@ export interface TextInput {
 
 export interface AudioInput {
   sessionId: string;
-  audio: AudioChunkInterface;
+  audio: AudioChunkData;
   state: State;
   interactionId: string;
 }

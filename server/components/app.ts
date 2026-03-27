@@ -1,5 +1,5 @@
 import { stopInworldRuntime } from "@inworld/runtime";
-import { VADFactory } from "@inworld/runtime/primitives/vad";
+import { VAD } from "@inworld/runtime/primitives/vad";
 import { v4 } from "uuid";
 const { validationResult } = require("express-validator");
 
@@ -51,8 +51,12 @@ export class InworldApp {
     this.heygenApiKey = this.env.heygenApiKey;
 
     // Initialize the VAD client for Assembly.AI
-    this.vadClient = await VADFactory.createLocal({
-      modelPath: this.vadModelPath,
+    this.vadClient = await VAD.create({
+      localConfig: {
+        modelPath: this.vadModelPath,
+        device: { type: "CPU" as any, index: 0 },
+        defaultConfig: { speechThreshold: 0.5 },
+      },
     });
   }
 
